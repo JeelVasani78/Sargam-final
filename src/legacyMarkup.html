@@ -167,7 +167,7 @@
                             <div>
                                 <p class="admin-eyebrow">LIBRARY MANAGEMENT</p>
                                 <h2>Manage your music</h2>
-                                <p class="admin-description">Add an album folder with its tracks and cover art, or remove an existing folder.</p>
+                                <p class="admin-description">Add folders, edit folder details and songs, or remove folders from the library.</p>
                             </div>
                             <button class="admin-secondary-button" id="closeAdminPanel" type="button">Back to library</button>
                         </div>
@@ -247,7 +247,7 @@
                         <div class="admin-library-list">
                             <div class="admin-form-heading">
                                 <h3>Current folders</h3>
-                                <p>Removing a folder also removes its tracks and cover from the music library.</p>
+                                <p>Edit a folder to change its details, add songs, or remove individual songs.</p>
                             </div>
                             <div class="admin-album-list" id="adminAlbumList"></div>
                         </div>
@@ -301,6 +301,61 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Admin editor for an existing music folder and its tracks. -->
+    <div class="modal-backdrop" id="editAlbumModal" role="dialog" aria-modal="true" aria-labelledby="editAlbumTitleHeading">
+        <div class="modal-box admin-edit-album-box">
+            <button class="modal-close-btn" id="closeEditAlbumModal" type="button" aria-label="Close editor">
+                <img src="close.svg" alt="Close">
+            </button>
+            <h2 id="editAlbumTitleHeading">Edit music folder</h2>
+            <p class="modal-subtitle">Update folder details, edit song credits, and choose songs to remove.</p>
+            <form id="editAlbumForm" class="admin-edit-album-form">
+                <input id="editAlbumId" type="hidden">
+                <div class="admin-form-grid">
+                    <label class="admin-field">
+                        <span>Folder / album name</span>
+                        <input id="editAlbumTitle" type="text" required>
+                    </label>
+                    <label class="admin-field">
+                        <span>Artist</span>
+                        <input id="editAlbumArtist" type="text">
+                    </label>
+                    <label class="admin-field admin-field-wide">
+                        <span>Description</span>
+                        <input id="editAlbumDescription" type="text">
+                    </label>
+                    <label class="admin-field admin-field-wide">
+                        <span>Replace cover image <small>(optional)</small></span>
+                        <input id="editAlbumCover" type="file" accept="image/*">
+                    </label>
+                </div>
+                <section class="admin-edit-tracks-section">
+                    <div class="admin-form-heading">
+                        <h3>Current songs</h3>
+                        <p>Edit credits or mark individual songs for removal.</p>
+                    </div>
+                    <div class="admin-edit-track-list" id="editAlbumTrackList"></div>
+                </section>
+                <section class="admin-edit-tracks-section">
+                    <div class="admin-form-heading">
+                        <h3>Add songs</h3>
+                        <p>Select audio files and enter a singer and composer for each one.</p>
+                    </div>
+                    <label class="admin-field">
+                        <span>Audio tracks</span>
+                        <input id="editAlbumTracks" type="file" accept="audio/*,.flac" multiple>
+                    </label>
+                    <div class="admin-edit-new-track-list" id="editAlbumNewTrackList"></div>
+                </section>
+                <p class="admin-form-message" id="editAlbumMessage" role="status"></p>
+                <div class="admin-edit-actions">
+                    <button class="admin-secondary-button" id="cancelEditAlbum" type="button">Cancel</button>
+                    <button class="modal-submit-btn admin-submit-button" id="saveEditAlbum" type="submit">Save changes</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- User music-folder request modal -->

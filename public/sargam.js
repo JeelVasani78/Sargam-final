@@ -1256,12 +1256,18 @@
 
   function updateProgress() {
     const duration = audio.duration || 0;
+    const progress = duration
+      ? Math.max(0, Math.min(100, (audio.currentTime / duration) * 100))
+      : 0;
 
     if (!isSeeking && el.seek) {
-      el.seek.value = duration
-        ? (audio.currentTime / duration) * 100
-        : 0;
+      el.seek.value = progress;
     }
+
+    el.seek?.style.setProperty(
+      '--seek-progress',
+      `${isSeeking && el.seek ? Number(el.seek.value) : progress}%`
+    );
 
     if (el.time) {
       el.time.textContent =
@@ -1314,7 +1320,15 @@
   // Sidebar and modal helpers
   // --------------------------------------------------
 
+  function syncMobileSidebarOffset() {
+    const navbar = document.querySelector('.navbar');
+    if (!navbar) return;
+    const navbarBottom = Math.ceil(navbar.getBoundingClientRect().bottom);
+    document.documentElement.style.setProperty('--mobile-navbar-bottom', `${navbarBottom}px`);
+  }
+
   function openSidebar() {
+    syncMobileSidebarOffset();
     el.sidebar?.classList.add('open');
     el.overlay?.classList.add('active');
   }
@@ -1884,6 +1898,114 @@
       }));
   }
 
+  function renderEditAlbumTracks(songs) {
+    const list = $('editAlbumTrackList');
+    if (!list) return;
+    list.replaceChildren();
+
+    songs.forEach((song) => {
+      const row = document.createElement('article');
+      row.className = 'admin-edit-track-row';
+      row.dataset.trackId = song.id;
+
+      const titleLabel = document.createElement('label');
+      titleLabel.className = 'admin-field';
+      const titleText = document.createElement('span');
+      titleText.textContent = 'Song title';
+      const titleInput = document.createElement('input');
+      titleInput.type = 'text';
+      titleInput.required = true;
+      titleInput.value = song.name || '';
+      titleInput.dataset.editTrackField = 'title';
+      titleLabel.append(titleText, titleInput);
+
+      const singerLabel = document.createElement('label');
+      singerLabel.className = 'admin-field';
+      const singerText = document.createElement('span');
+      singerText.textContent = 'Singer';
+      const singerInput = document.createElement('input');
+      singerInput.type = 'text';
+      singerInput.value = song.singer || '';
+      singerInput.dataset.editTrackField = 'singer';
+      singerLabel.append(singerText, singerInput);
+
+      const composerLabel = document.createElement('label');
+      composerLabel.className = 'admin-field';
+      const composerText = document.createElement('span');
+      composerText.textContent = 'Composer';
+      const composerInput = document.createElement('input');
+      composerInput.type = 'text';
+      composerInput.value = song.composer || '';
+      composerInput.dataset.editTrackField = 'composer';
+      composerLabel.append(composerText, composerInput);
+
+      const removeLabel = document.createElement('label');
+      removeLabel.className = 'admin-edit-track-remove';
+      const removeInput = document.createElement('input');
+      removeInput.type = 'checkbox';
+      removeInput.dataset.removeTrack = 'true';
+      const removeText = document.createElement('span');
+      removeText.textContent = 'Remove this song';
+      removeLabel.append(removeInput, removeText);
+
+      row.append(titleLabel, singerLabel, composerLabel, removeLabel);
+      list.appendChild(row);
+    });
+  }
+
+  function renderEditAlbumNewTracks(files) {
+    const list = $('editAlbumNewTrackList');
+    if (!list) return;
+    list.replaceChildren();
+
+    files.forEach((file, index) => {
+      const row = document.createElement('article');
+      row.className = 'admin-edit-new-track-row';
+      const title = document.createElement('strong');
+      title.textContent = file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+      const fields = document.createElement('div');
+      fields.className = 'admin-track-credit-fields';
+
+      [['Singer', 'singer'], ['Composer', 'composer']].forEach(([labelText, key]) => {
+        const label = document.createElement('label');
+        label.className = 'admin-field';
+        const labelTextNode = document.createElement('span');
+        labelTextNode.textContent = labelText;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.required = true;
+        input.placeholder = `${labelText} name`;
+        input.dataset.newTrackCredit = key;
+        input.dataset.trackIndex = String(index);
+        label.append(labelTextNode, input);
+        fields.appendChild(label);
+      });
+
+      row.append(title, fields);
+      list.appendChild(row);
+    });
+  }
+
+  function openAlbumEditor(album) {
+    $('editAlbumForm')?.reset();
+    $('editAlbumId').value = album.id;
+    $('editAlbumTitle').value = album.title || '';
+    $('editAlbumArtist').value = album.artist || '';
+    $('editAlbumDescription').value = album.rawDescription ?? album.description ?? '';
+    $('editAlbumMessage').textContent = '';
+    renderEditAlbumTracks(album.songs || []);
+    renderEditAlbumNewTracks([]);
+    $('editAlbumModal')?.classList.add('open');
+  }
+
+  function collectEditAlbumNewTrackCredits() {
+    return [...($('editAlbumNewTrackList')?.querySelectorAll('.admin-edit-new-track-row') || [])]
+      .map((row) => ({
+        singer: row.querySelector('[data-new-track-credit="singer"]')?.value.trim() || '',
+        composer: row.querySelector('[data-new-track-credit="composer"]')?.value.trim() || ''
+      }));
+  }
+
   async function renderAdminAlbums() {
     const list = $('adminAlbumList');
     if (!list) return;
@@ -1915,6 +2037,15 @@
         count.textContent = `${album.songs.length} track${album.songs.length === 1 ? '' : 's'}`;
         details.append(title, description, count);
 
+        const actions = document.createElement('div');
+        actions.className = 'admin-album-actions';
+
+        const edit = document.createElement('button');
+        edit.className = 'admin-secondary-button';
+        edit.type = 'button';
+        edit.textContent = 'Edit folder';
+        edit.addEventListener('click', () => openAlbumEditor(album));
+
         const remove = document.createElement('button');
         remove.className = 'admin-remove-button';
         remove.type = 'button';
@@ -1934,7 +2065,8 @@
           }
         });
 
-        row.append(cover, details, remove);
+        actions.append(edit, remove);
+        row.append(cover, details, actions);
         list.appendChild(row);
       });
     } catch (error) {
@@ -2018,6 +2150,7 @@
     // Seekbar: preview while dragging, seek when released.
     el.seek?.addEventListener('input', () => {
       isSeeking = true;
+      el.seek.style.setProperty('--seek-progress', `${Number(el.seek.value)}%`);
 
       if (audio.duration && el.time) {
         const previewTime =
@@ -2149,6 +2282,9 @@
 
     // Mobile sidebar
     $('hamburgerBtn')?.addEventListener('click', openSidebar);
+    window.addEventListener('resize', () => {
+      if (el.sidebar?.classList.contains('open')) syncMobileSidebarOffset();
+    });
 
     $('closeSidebarBtn')?.addEventListener(
       'click',
@@ -2308,6 +2444,58 @@
     });
     $('closeAdminPanel')?.addEventListener('click', () => {
       setAdminPanelVisible(false);
+    });
+
+    const closeAlbumEditor = () => closeModal('editAlbumModal');
+    $('closeEditAlbumModal')?.addEventListener('click', closeAlbumEditor);
+    $('cancelEditAlbum')?.addEventListener('click', closeAlbumEditor);
+    $('editAlbumModal')?.addEventListener('click', (event) => {
+      if (event.target.id === 'editAlbumModal') closeAlbumEditor();
+    });
+    $('editAlbumTracks')?.addEventListener('change', (event) => {
+      renderEditAlbumNewTracks([...event.currentTarget.files || []]);
+    });
+
+    $('editAlbumForm')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const submit = $('saveEditAlbum');
+      const trackEdits = [...($('editAlbumTrackList')?.querySelectorAll('.admin-edit-track-row') || [])]
+        .map((row) => ({
+          id: row.dataset.trackId,
+          title: row.querySelector('[data-edit-track-field="title"]')?.value.trim() || '',
+          singer: row.querySelector('[data-edit-track-field="singer"]')?.value.trim() || '',
+          composer: row.querySelector('[data-edit-track-field="composer"]')?.value.trim() || '',
+          remove: Boolean(row.querySelector('[data-remove-track]')?.checked)
+        }));
+      const audioFiles = [...($('editAlbumTracks')?.files || [])];
+      const trackCredits = collectEditAlbumNewTrackCredits();
+      submit.disabled = true;
+      $('editAlbumMessage').textContent = 'Saving folder changes and uploading new songs…';
+      $('editAlbumMessage').className = 'admin-form-message';
+
+      try {
+        await window.sargamBackend.updateAlbum({
+          albumId: $('editAlbumId').value,
+          title: $('editAlbumTitle').value.trim(),
+          artist: $('editAlbumArtist').value.trim(),
+          description: $('editAlbumDescription').value.trim(),
+          coverFile: $('editAlbumCover')?.files?.[0] || null,
+          trackEdits,
+          audioFiles,
+          trackCredits
+        });
+        closeAlbumEditor();
+        $('editAlbumForm').reset();
+        setFormMessage('adminFormMessage', 'Folder details and songs were updated.', 'success');
+        await refreshLibrary();
+        await renderAdminAlbums();
+        await renderAdminDashboard();
+      } catch (error) {
+        $('editAlbumMessage').textContent = error.message;
+        $('editAlbumMessage').className = 'admin-form-message error';
+      } finally {
+        submit.disabled = false;
+      }
     });
 
     $('adminAlbumTracks')?.addEventListener('change', (event) => {

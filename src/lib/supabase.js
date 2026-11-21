@@ -246,6 +246,8 @@ export const sargamBackend = {
         id: album.id,
         title: album.title,
         description: album.description || `${songs.length} songs`,
+        rawDescription: album.description || '',
+        artist: album.artist || 'Sargam.play',
         cover: albumCover,
         songs,
         url: album.id
@@ -560,6 +562,113 @@ export const sargamBackend = {
     } catch (error) {
       if (uploadedPaths.length) await client.storage.from('music').remove(uploadedPaths)
       await client.from('albums').delete().eq('id', album.id)
+      throw error
+    }
+  },
+
+  async updateAlbum({ albumId, title, description, artist, coverFile, trackEdits = [], audioFiles = [], trackCredits = [] }) {
+    const client = requireClient()
+    if (!session?.user || profile?.role !== 'admin') {
+      throw new Error('Only an administrator can edit music folders.')
+    }
+    if (!title?.trim()) throw new Error('Enter a folder name.')
+    if (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim())) {
+      throw new Error('Enter both the singer and composer for every new song.')
+    }
+
+    const { data: album, error: albumError } = await client
+      .from('albums')
+      .select('cover_path, tracks(id, storage_path, position)')
+      .eq('id', albumId)
+      .single()
+    if (albumError) throw albumError
+
+    const existingTracks = album.tracks || []
+    const trackIds = new Set(existingTracks.map((track) => track.id))
+    const edits = trackEdits.filter((edit) => trackIds.has(edit.id))
+    const removedIds = edits.filter((edit) => edit.remove).map((edit) => edit.id)
+    if (existingTracks.length - removedIds.length + audioFiles.length < 1) {
+      throw new Error('A folder must keep at least one song. Add a song before removing all current songs.')
+    }
+
+    const uploadedPaths = []
+    const insertedTrackIds = []
+    let newCoverPath = null
+    let albumSaved = false
+    try {
+      if (coverFile) {
+        newCoverPath = `${albumId}/cover-${crypto.randomUUID()}-${safeFileName(coverFile.name)}`
+        const { error } = await client.storage.from('music').upload(newCoverPath, coverFile, {
+          contentType: coverFile.type || 'application/octet-stream',
+          upsert: false
+        })
+        if (error) throw error
+        uploadedPaths.push(newCoverPath)
+      }
+
+      const startPosition = existingTracks.reduce((max, track) => Math.max(max, Number(track.position) || 0), -1) + 1
+      const newTracks = []
+      for (let index = 0; index < audioFiles.length; index += 1) {
+        const file = audioFiles[index]
+        const storagePath = `${albumId}/${crypto.randomUUID()}-${safeFileName(file.name)}`
+        const { error } = await client.storage.from('music').upload(storagePath, file, {
+          contentType: file.type || 'audio/mpeg',
+          upsert: false
+        })
+        if (error) throw error
+        uploadedPaths.push(storagePath)
+        newTracks.push({
+          album_id: albumId,
+          title: file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' '),
+          artist: artist.trim() || 'Sargam.play',
+          singer: trackCredits[index].singer.trim(),
+          composer: trackCredits[index].composer.trim(),
+          storage_path: storagePath,
+          position: startPosition + index
+        })
+      }
+
+      if (newTracks.length) {
+        const { data, error } = await client.from('tracks').insert(newTracks).select('id')
+        if (error) throw error
+        insertedTrackIds.push(...(data || []).map((track) => track.id))
+      }
+
+      const albumUpdate = { title: title.trim(), description: description.trim(), artist: artist.trim() || 'Sargam.play' }
+      if (newCoverPath) albumUpdate.cover_path = newCoverPath
+      const { error: updateError } = await client.from('albums').update(albumUpdate).eq('id', albumId)
+      if (updateError) throw updateError
+      albumSaved = true
+
+      for (const edit of edits.filter((item) => !item.remove)) {
+        const { error } = await client.from('tracks').update({
+          title: edit.title.trim(),
+          artist: albumUpdate.artist,
+          singer: edit.singer.trim(),
+          composer: edit.composer.trim()
+        }).eq('id', edit.id).eq('album_id', albumId)
+        if (error) throw error
+      }
+
+      const removedTracks = existingTracks.filter((track) => removedIds.includes(track.id))
+      if (removedIds.length) {
+        const { error } = await client.from('tracks').delete().eq('album_id', albumId).in('id', removedIds)
+        if (error) throw error
+      }
+
+      const oldStoragePaths = [
+        ...(newCoverPath && album.cover_path ? [album.cover_path] : []),
+        ...removedTracks.map((track) => track.storage_path)
+      ].filter(Boolean)
+      if (oldStoragePaths.length) {
+        const { error } = await client.storage.from('music').remove(oldStoragePaths)
+        if (error) console.warn('Folder updated, but some replaced or removed files remain in storage:', error)
+      }
+    } catch (error) {
+      if (!albumSaved) {
+        if (uploadedPaths.length) await client.storage.from('music').remove(uploadedPaths)
+        if (insertedTrackIds.length) await client.from('tracks').delete().in('id', insertedTrackIds)
+      }
       throw error
     }
   },
