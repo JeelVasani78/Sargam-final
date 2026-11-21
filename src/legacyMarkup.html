@@ -1,0 +1,412 @@
+﻿
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <div class="container flex">
+
+        <!-- Left sidebar: navigation and music library -->
+        <div class="left border" id="sidebar">
+
+            <!-- Logo and primary navigation -->
+            <div class="left-top">
+                <div class="gray">
+
+                    <!-- Mobile close button -->
+                    <button class="close-sidebar-btn" id="closeSidebarBtn" title="Close Library">
+                        <img src="close.svg" alt="Close">
+                    </button>
+
+                    <div class="logo" id="brandLogo">
+                        <div class="logo-icon-wrapper">
+                            <img src="heart.svg" alt="Heart logo">
+                        </div>
+                        <p>Sargam<span>.play</span></p>
+                    </div>
+
+                    <ul>
+                        <li class="active" id="navHome">
+                            <img src="home.svg" alt="Home">
+                            <span>Home</span>
+                        </li>
+
+                        <li id="navSearch">
+                            <img src="search.svg" alt="Search">
+                            <span>Search</span>
+                        </li>
+                    </ul>
+
+                </div>
+            </div>
+
+            <!-- Library section containing the dynamically generated song list -->
+            <div class="left-bottom">
+                <div class="gray">
+
+                    <div class="heading flex">
+                        <h3>
+                            <img src="playlist.svg" alt="Playlist" style="width: 20px; height: 20px;">
+                            <span id="libraryHeadingText">Your Library</span>
+                        </h3>
+                    </div>
+
+                    <!-- Library Search filter -->
+                    <div class="library-search">
+                        <img src="search.svg" alt="Search" class="search-icon">
+                        <input type="text" id="librarySearchInput" placeholder="Filter current songs...">
+                    </div>
+
+                    <div class="songlist" id="songListContainer">
+                        <ul id="songListUl">
+                            <!-- JavaScript inserts song items here dynamically -->
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right section: playlists and music player -->
+        <div class="right">
+            <div class="gray">
+
+                <!-- Top navigation and account buttons -->
+                <div class="navbar">
+
+                    <div class="nav-left-section">
+                        <!-- Mobile Hamburger Button -->
+                        <button class="hamburger-btn" id="hamburgerBtn" title="Open Library">
+                            <img src="hamburger.svg" alt="Menu">
+                        </button>
+
+                        <div class="navbar-profile" id="navbarProfile" hidden>
+                            <button class="auth-profile-avatar-button" id="profileAvatarButton" type="button" title="Change profile photo" aria-label="Change profile photo" hidden>
+                                <img id="authUserAvatar" src="/avatar-default.svg" alt="Profile photo">
+                            </button>
+                            <span class="auth-user-name" id="authUserName" hidden></span>
+                            <input class="visually-hidden-file-input" id="profileAvatarInput" type="file" accept="image/*" tabindex="-1" aria-label="Choose a profile photo">
+                        </div>
+
+                        <!-- Global Search Input -->
+                        <div class="navbar-search">
+                            <img src="search.svg" alt="Search">
+                            <input type="text" id="globalSearchInput" placeholder="Search songs, artists, playlists...">
+                        </div>
+                    </div>
+
+                    <div class="buttons" id="authButtonsContainer">
+                        <div class="appearance-controls" id="appearanceControls">
+                            <button class="appearance-mode-button" id="appearanceModeButton" type="button" aria-label="Switch to light mode" title="Switch to light mode">
+                                <svg id="appearanceModeIcon" viewBox="0 0 24 24" aria-hidden="true"></svg>
+                                <span class="appearance-mode-label" id="appearanceModeLabel">Dark</span>
+                            </button>
+                            <button class="appearance-menu-button" id="appearanceMenuButton" type="button" aria-label="Choose color theme" title="Choose color theme" aria-expanded="false" aria-controls="appearanceMenu">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18h1.2a2.8 2.8 0 0 0 2.1-4.7 1.5 1.5 0 0 1 1.1-2.5H18a3 3 0 0 0 3-3c0-4.3-4-7.8-9-7.8ZM7.2 12a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Zm2.4-4a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Zm4.8 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Zm3 4a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6Z"/></svg>
+                            </button>
+                            <section class="appearance-menu" id="appearanceMenu" aria-label="Appearance settings" hidden>
+                                <div class="appearance-menu-heading">
+                                    <div>
+                                        <strong>Appearance</strong>
+                                        <span>Choose a mode and color theme</span>
+                                    </div>
+                                    <button class="appearance-menu-close" id="closeAppearanceMenu" type="button" aria-label="Close appearance settings">×</button>
+                                </div>
+                                <div class="appearance-mode-options" role="group" aria-label="Color mode">
+                                    <button type="button" data-appearance-mode="dark" aria-pressed="true">Dark</button>
+                                    <button type="button" data-appearance-mode="light" aria-pressed="false">Light</button>
+                                </div>
+                                <p class="appearance-theme-title" id="appearanceThemeTitle">Dark color themes</p>
+                                <div class="appearance-theme-options" id="appearanceThemeOptions" role="group" aria-label="Color theme"></div>
+                                <p class="appearance-saved-note">Saved for this account on this browser.</p>
+                            </section>
+                        </div>
+                        <button class="btn-signup" id="requestMusicBtn" hidden>Request Music</button>
+                        <button class="btn-signup" id="adminPanelBtn" hidden>Manage Music</button>
+                        <button class="btn-signup" id="logoutBtn" hidden>Log Out</button>
+                        <button class="btn-signup" id="signupBtn">Signup</button>
+                        <button class="btn-login" id="loginBtn">Login</button>
+                    </div>
+
+                </div>
+
+                <!-- Playlist cards displayed in the main content area -->
+                <div class="spotify-playlist" id="mainPlaylistView">
+
+                    <!-- Category Filter Chips -->
+                    <div class="filter-chips" id="filterChips">
+                        <button class="filter-chip active" data-category="all">All</button>
+                        <button class="filter-chip" data-category="romance">Romantic</button>
+                        <button class="filter-chip" data-category="lofi">Lo-Fi Beats</button>
+                        <button class="filter-chip" data-category="pop">Top Hits</button>
+                        <button class="filter-chip" data-category="acoustic">Acoustic & Calm</button>
+                        <button class="filter-chip" data-category="liked">Liked Songs</button>
+                    </div>
+
+                    <!-- Hero Visualizer Banner -->
+                    <div class="playlist-hero">
+                        <div class="hero-content">
+                            <h2 id="heroTitle">Featured: Sargam Essentials</h2>
+                            <p id="heroSubtitle">Immerse yourself in rich, high-fidelity sound with curated playlists, live audio visualizer, and seamless playback.</p>
+                        </div>
+                        <div class="hero-visualizer-container">
+                            <canvas id="visualizerCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="section-header">
+                        <h1 id="playlistSectionTitle">Sargam Playlists...</h1>
+                        <span class="see-all-link" id="seeAllBtn">Show All</span>
+                    </div>
+
+                    <div class="cardcontainer" id="cardContainer">
+                        <!-- JavaScript inserts playlist cards here dynamically -->
+                    </div> 
+
+                    <section class="admin-panel" id="adminPanel" hidden>
+                        <div class="admin-panel-header">
+                            <div>
+                                <p class="admin-eyebrow">LIBRARY MANAGEMENT</p>
+                                <h2>Manage your music</h2>
+                                <p class="admin-description">Add an album folder with its tracks and cover art, or remove an existing folder.</p>
+                            </div>
+                            <button class="admin-secondary-button" id="closeAdminPanel" type="button">Back to library</button>
+                        </div>
+
+                        <section class="admin-dashboard" aria-label="Library overview">
+                            <div class="admin-dashboard-heading">
+                                <h3>Library overview</h3>
+                                <p>A quick view of your catalog and listener activity.</p>
+                            </div>
+                            <div class="admin-metrics-grid">
+                                <article class="admin-metric-card"><span>Folders</span><strong id="metricAlbums">—</strong></article>
+                                <article class="admin-metric-card"><span>Total songs</span><strong id="metricTracks">—</strong></article>
+                                <article class="admin-metric-card"><span>Listeners</span><strong id="metricUsers">—</strong></article>
+                                <article class="admin-metric-card"><span>Total plays</span><strong id="metricPlays">—</strong></article>
+                                <article class="admin-metric-card"><span>Likes</span><strong id="metricLikes">—</strong></article>
+                                <article class="admin-metric-card admin-metric-pending"><span>Pending requests</span><strong id="metricRequests">—</strong></article>
+                            </div>
+                            <div class="admin-charts-grid">
+                                <section class="admin-ranking-panel">
+                                    <h3>Most played</h3>
+                                    <div class="admin-ranking-list" id="mostPlayedList"></div>
+                                </section>
+                                <section class="admin-ranking-panel">
+                                    <h3>Most liked</h3>
+                                    <div class="admin-ranking-list" id="mostLikedList"></div>
+                                </section>
+                            </div>
+                            <section class="admin-requests-panel">
+                                <div class="admin-form-heading">
+                                    <h3>Folder requests</h3>
+                                    <p>Submitted folders stay private until you approve them.</p>
+                                </div>
+                                <div class="admin-request-list" id="adminRequestList"></div>
+                            </section>
+                        </section>
+
+                        <form class="admin-album-form" id="adminAlbumForm">
+                            <div class="admin-form-heading">
+                                <h3>Add a music folder</h3>
+                                <p>Tracks are uploaded together and appear in the library when finished.</p>
+                            </div>
+                            <div class="admin-form-grid">
+                                <label class="admin-field">
+                                    <span>Folder / album name</span>
+                                    <input id="adminAlbumTitle" name="title" type="text" placeholder="e.g. Evening Sessions" required>
+                                </label>
+                                <label class="admin-field">
+                                    <span>Artist</span>
+                                    <input id="adminAlbumArtist" name="artist" type="text" placeholder="Artist or collection name">
+                                </label>
+                                <label class="admin-field admin-field-wide">
+                                    <span>Description</span>
+                                    <input id="adminAlbumDescription" name="description" type="text" placeholder="A short description for this folder">
+                                </label>
+                                <label class="admin-field">
+                                    <span>Cover image</span>
+                                    <input id="adminAlbumCover" name="cover" type="file" accept="image/*">
+                                </label>
+                                <label class="admin-field">
+                                    <span>Audio tracks</span>
+                                    <input id="adminAlbumTracks" name="tracks" type="file" accept="audio/*,.flac" multiple required>
+                                </label>
+                            </div>
+                            <div class="admin-track-credits" id="adminTrackCredits" hidden>
+                                <div class="admin-form-heading">
+                                    <h3>Song credits</h3>
+                                    <p>Add the singer and composer for each selected track.</p>
+                                </div>
+                                <div class="admin-track-credits-list" id="adminTrackCreditsList"></div>
+                            </div>
+                            <div class="admin-form-footer">
+                                <p class="admin-form-message" id="adminFormMessage" role="status"></p>
+                                <button class="modal-submit-btn admin-submit-button" id="adminUploadButton" type="submit">Add folder</button>
+                            </div>
+                        </form>
+
+                        <div class="admin-library-list">
+                            <div class="admin-form-heading">
+                                <h3>Current folders</h3>
+                                <p>Removing a folder also removes its tracks and cover from the music library.</p>
+                            </div>
+                            <div class="admin-album-list" id="adminAlbumList"></div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Music player: progress bar, song details, and playback controls -->
+                <div class="playbar" id="playbar">
+
+                    <div class="seekbar">
+                        <input type="range" id="seekSlider" min="0" max="100" value="0" step="0.1" title="Seek track">
+                    </div>
+
+                    <div class="wrapper">
+
+                        <!-- Left: Song details -->
+                        <div class="songinfo">
+                            <img src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=100&auto=format&fit=crop&q=80" alt="Current Album" class="playbar-thumb" id="playbarThumb">
+                            <div class="playbar-details">
+                                <div class="playbar-title" id="currentSongTitle">Tap to Play</div>
+                                <div class="playbar-artist" id="currentSongArtist">Select any song or playlist</div>
+                            </div>
+                            <div id="playbarTrackName" class="playbar-track-name">No song playing</div>
+                            <img src="heart.svg" alt="Like" class="playbar-heart" id="playbarHeart" title="Add to Liked Songs">
+                        </div>
+
+                        <!-- Center: Playback controls -->
+                        <div class="songbuttons">
+                            <img id="shuffle" src="shuffle.svg" alt="Shuffle" title="Shuffle (S)">
+                            <img id="previous" src="prevsong.svg" alt="Previous song" title="Previous (Left Arrow)">
+                            <img id="play" src="play.svg" alt="Play or pause" title="Play/Pause (Space)">
+                            <img id="next" src="nextsong.svg" alt="Next song" title="Next (Right Arrow)">
+                            <img id="repeat" src="repeat.svg" alt="Repeat" title="Repeat (R)">
+                        </div>
+
+                        <!-- Right: Song time and Volume controls -->
+                        <div class="playbar-right-controls">
+                            <div class="songtime" id="songTime">
+                                00:00 / 00:00
+                            </div>
+
+                            <div class="volume-container">
+                                <img id="volumeIcon" src="volume.svg" alt="Volume" title="Mute/Unmute (M)">
+                                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.01" value="0.8" title="Volume">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- User music-folder request modal -->
+    <div class="modal-backdrop" id="requestModal">
+        <div class="modal-box request-modal-box">
+            <button class="modal-close-btn" id="closeRequestModal" type="button">
+                <img src="close.svg" alt="Close">
+            </button>
+            <h2>Request a music folder</h2>
+            <p class="modal-subtitle">Choose a folder with info.json and its audio files. It will be reviewed before appearing in the library.</p>
+            <form class="modal-form" id="musicRequestForm">
+                <div class="form-group">
+                    <label for="requestFolderFiles">Choose your prepared folder</label>
+                    <input id="requestFolderFiles" type="file" webkitdirectory directory multiple required>
+                    <small class="request-folder-help">Include info.json, audio tracks, and an optional cover image in the folder.</small>
+                </div>
+                <p class="auth-form-message" id="requestFormMessage" role="status"></p>
+                <button class="modal-submit-btn" id="submitMusicRequest" type="submit">Send for review</button>
+            </form>
+            <div class="my-requests-section">
+                <h3>Your requests</h3>
+                <div class="my-request-list" id="myRequestList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal-backdrop" id="loginModal">
+        <div class="modal-box">
+            <button class="modal-close-btn" id="closeLoginModal">
+                <img src="close.svg" alt="Close">
+            </button>
+            <h2>Welcome Back</h2>
+            <p class="modal-subtitle">Log in to sync your library, favorites, and playlists.</p>
+            <form class="modal-form" id="loginForm">
+                <p class="auth-form-message" id="loginMessage" role="status"></p>
+                <div class="form-group">
+                    <label for="loginEmail">Email / Username</label>
+                    <input type="text" id="loginEmail" placeholder="e.g. musiclover@sargam.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required>
+                </div>
+                <button type="submit" class="modal-submit-btn">Log In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Signup Modal -->
+    <div class="modal-backdrop" id="signupModal">
+        <div class="modal-box">
+            <button class="modal-close-btn" id="closeSignupModal">
+                <img src="close.svg" alt="Close">
+            </button>
+            <h2>Join Sargam</h2>
+            <p class="modal-subtitle">Create a free account to enjoy unlimited music streaming.</p>
+            <form class="modal-form" id="signupForm">
+                <p class="auth-form-message" id="signupMessage" role="status"></p>
+                <div class="form-group">
+                    <label for="signupName">Display Name</label>
+                    <input type="text" id="signupName" placeholder="e.g. Alex" required>
+                </div>
+                <div class="form-group signup-avatar-field">
+                    <label for="signupAvatar">Profile photo <span class="optional-label">Optional</span></label>
+                    <div class="signup-avatar-picker">
+                        <img id="signupAvatarPreview" src="/avatar-default.svg" alt="Default profile photo preview">
+                        <input type="file" id="signupAvatar" accept="image/*">
+                    </div>
+                    <small>Your photo appears beside your name. You can change it later.</small>
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email Address</label>
+                    <input type="email" id="signupEmail" placeholder="e.g. alex@sargam.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Create Password</label>
+                    <input type="password" id="signupPassword" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required>
+                </div>
+                <button type="submit" class="modal-submit-btn">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Shared circular profile-photo crop step for signup and profile edits. -->
+    <div class="modal-backdrop avatar-crop-modal" id="avatarCropModal" role="dialog" aria-modal="true" aria-labelledby="avatarCropTitle">
+        <div class="modal-box avatar-crop-box">
+            <h2 id="avatarCropTitle">Adjust profile photo</h2>
+            <p class="modal-subtitle">Drag the photo to position it, then zoom to choose what appears in your round profile picture.</p>
+            <div class="avatar-crop-viewport" id="avatarCropViewport" aria-label="Drag to position the circular crop">
+                <img id="avatarCropImage" alt="Profile photo crop preview">
+            </div>
+            <label class="avatar-zoom-control" for="avatarCropZoom">
+                <span>Zoom</span>
+                <input id="avatarCropZoom" type="range" min="1" max="3" step="0.01" value="1">
+            </label>
+            <div class="avatar-crop-actions">
+                <button class="admin-secondary-button" id="cancelAvatarCrop" type="button">Cancel</button>
+                <button class="modal-submit-btn" id="applyAvatarCrop" type="button">Use photo</button>
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <!-- Audio Element -->
+    <audio id="audioPlayer" preload="auto"></audio>
+
