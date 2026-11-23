@@ -4935,3 +4935,74 @@ html[data-theme-mode="light"] .filter-chip.active {
     border-radius: 999px;
     background: var(--theme-accent, var(--sargam-green));
 }
+
+/* Personal folders inside Liked Songs */
+.liked-collections[hidden] { display: none !important; }
+.liked-collections {
+    margin: 1rem 0 1.25rem;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--theme-accent, #8b4de8) 25%, transparent);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--theme-secondary, #24163a) 70%, transparent);
+}
+.liked-collections-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .85rem; }
+.liked-collections-heading > div { display: grid; gap: .2rem; }
+.liked-collections-heading strong { color: var(--theme-text, #fff); font-size: .98rem; }
+.liked-collections-heading span { color: var(--theme-muted, #aaa); font-size: .82rem; }
+.liked-create-button, .liked-cancel-button {
+    border: 0; border-radius: 999px; padding: .65rem 1rem; font: inherit; font-weight: 700; cursor: pointer;
+}
+.liked-create-button { color: #fff; background: var(--theme-accent, #8b4de8); box-shadow: 0 5px 18px color-mix(in srgb, var(--theme-accent, #8b4de8) 25%, transparent); }
+.liked-create-button:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.liked-folder-list { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.liked-folder-chip {
+    display: inline-flex; align-items: center; gap: .5rem; min-height: 40px; padding: .45rem .75rem;
+    border: 1px solid color-mix(in srgb, var(--theme-text, #fff) 14%, transparent); border-radius: 999px;
+    color: var(--theme-text, #fff); background: color-mix(in srgb, var(--theme-text, #fff) 5%, transparent);
+    font: inherit; cursor: pointer; transition: background .16s ease, border-color .16s ease, transform .16s ease;
+}
+.liked-folder-chip:hover { transform: translateY(-1px); border-color: var(--theme-accent, #8b4de8); }
+.liked-folder-chip.active { color: #fff; border-color: var(--theme-accent, #8b4de8); background: var(--theme-accent, #8b4de8); }
+.liked-folder-chip.active .liked-folder-chip-icon { color: #fff; background: rgba(255, 255, 255, .18); }
+.liked-folder-chip-icon { display: grid; width: 23px; height: 23px; flex: 0 0 23px; place-items: center; border-radius: 7px; color: var(--theme-accent, #8b4de8); background: color-mix(in srgb, var(--theme-accent, #8b4de8) 15%, transparent); }
+.liked-folder-chip-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.liked-folder-chip-icon--liked svg { fill: currentColor; stroke: none; }
+.liked-folder-count { min-width: 1.35rem; padding: .08rem .35rem; border-radius: 999px; text-align: center; font-size: .72rem; background: color-mix(in srgb, #000 18%, transparent); }
+.liked-folder-delete { width: 26px; height: 32px; margin-left: -.55rem; border: 0; border-radius: 8px; color: var(--theme-muted, #aaa); background: transparent; font-size: 1.2rem; cursor: pointer; }
+.liked-folder-delete:hover { color: #ff7777; background: color-mix(in srgb, #ff4444 12%, transparent); }
+.liked-song-folder-select { appearance: none; -webkit-appearance: none; display: inline-block; width: 38px; height: 36px; flex: 0 0 38px; margin: 0; padding: 0; overflow: hidden; border: 1px solid color-mix(in srgb, var(--theme-text, #fff) 18%, transparent); border-radius: 10px; color: transparent; text-indent: -999px; background-color: var(--theme-tertiary, #21152e); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e8efff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpath d='M12 11v5m-2.5-2.5h5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: center; background-size: 19px 19px; cursor: pointer; }
+.liked-song-folder-select option { color: var(--theme-text, #fff); text-indent: 0; }
+.liked-song-card .liked-song-folder-select { display: block; margin: .6rem 0 0 auto; }
+.liked-song-folder-select:focus-visible, .liked-folder-chip:focus-visible, .liked-create-button:focus-visible { outline: 2px solid var(--theme-accent, #8b4de8); outline-offset: 2px; }
+.liked-folder-dialog { width: min(430px, calc(100vw - 2rem)); padding: 0; border: 1px solid color-mix(in srgb, var(--theme-accent, #8b4de8) 32%, transparent); border-radius: 24px; color: var(--theme-text, #fff); background: var(--theme-secondary, #21152e); box-shadow: 0 24px 90px #0009; }
+.liked-folder-dialog::backdrop { background: #09050dcc; backdrop-filter: blur(5px); }
+.liked-folder-dialog form { position: relative; display: grid; gap: .75rem; padding: 2rem; }
+.liked-dialog-close { position: absolute; top: .8rem; right: .9rem; width: 34px; height: 34px; border: 0; border-radius: 50%; color: var(--theme-text, #fff); background: color-mix(in srgb, var(--theme-text, #fff) 9%, transparent); font-size: 1.3rem; cursor: pointer; }
+.liked-dialog-icon { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 15px; color: #fff; background: var(--theme-accent, #8b4de8); font-size: 1.5rem; }
+.liked-folder-dialog h2 { margin: .25rem 0 0; font-size: 1.45rem; }
+.liked-folder-dialog p { margin: 0 0 .5rem; color: var(--theme-muted, #aaa); line-height: 1.5; }
+.liked-folder-dialog label { font-size: .86rem; font-weight: 700; }
+.liked-folder-dialog input { width: 100%; box-sizing: border-box; padding: .8rem .9rem; border: 1px solid color-mix(in srgb, var(--theme-text, #fff) 20%, transparent); border-radius: 12px; color: var(--theme-text, #fff); background: color-mix(in srgb, #000 18%, transparent); font: inherit; }
+.liked-dialog-actions { display: flex; justify-content: flex-end; gap: .6rem; margin-top: .4rem; }
+.liked-cancel-button { color: var(--theme-text, #fff); background: color-mix(in srgb, var(--theme-text, #fff) 10%, transparent); }
+@media (max-width: 600px) {
+    .liked-collections { padding: .8rem; }
+    .liked-collections-heading { align-items: flex-start; flex-direction: column; }
+    .liked-song-folder-select { width: 36px; height: 34px; flex-basis: 36px; }
+    .liked-folder-dialog form { padding: 1.5rem; }
+}
+
+/* Keep durations and folder actions in their own space in the library drawer. */
+.songlist ul li:has(.liked-song-folder-select) { gap: 6px; padding: 8px; min-height: 60px; }
+.songlist ul li:has(.liked-song-folder-select) .item-left { flex: 1 1 auto; min-width: 0; gap: 8px; }
+.songlist ul li:has(.liked-song-folder-select) .song-thumb { width: 40px; height: 40px; }
+.songlist ul li:has(.liked-song-folder-select) .item-right { flex: 0 0 auto; gap: 6px; }
+.songlist ul li:has(.liked-song-folder-select) .song-duration { flex: 0 0 auto; font-size: 11px; white-space: nowrap; }
+.songlist ul li:has(.liked-song-folder-select) .mini-play-icon { width: 18px; height: 18px; flex: 0 0 18px; }
+@media (max-width: 600px) {
+    .songlist ul li:has(.liked-song-folder-select) { gap: 5px; padding: 7px; }
+    .songlist ul li:has(.liked-song-folder-select) .item-left { gap: 6px; }
+    .songlist ul li:has(.liked-song-folder-select) .song-thumb { width: 36px; height: 36px; }
+    .songlist ul li:has(.liked-song-folder-select) .item-right { gap: 4px; }
+    .songlist ul li:has(.liked-song-folder-select) .song-duration { font-size: 10px; }
+}

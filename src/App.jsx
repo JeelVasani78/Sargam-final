@@ -6,7 +6,7 @@ function App() {
   useEffect(() => {
     window.sargamBackend = sargamBackend
     const playerScript = document.createElement('script')
-    playerScript.src = '/sargam.js'
+    playerScript.src = '/sargam.js?v=request-history-trim-4'
     playerScript.async = false
 
     let disposed = false

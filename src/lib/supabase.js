@@ -95,6 +95,24 @@ function safeFileName(filename) {
   return `${name || 'track'}${extension.toLowerCase()}`
 }
 
+async function attachAlbumRequestTracks(requests) {
+  if (!requests.length) return requests
+  const requestIds = requests.map((request) => request.id)
+  const { data, error } = await requireClient()
+    .from('album_request_tracks')
+    .select('id, request_id, title, artist, singer, composer, category, file_name, storage_path, position')
+    .in('request_id', requestIds)
+    .order('position', { ascending: true })
+  if (error) throw error
+
+  const tracksByRequest = new Map(requestIds.map((id) => [id, []]))
+  ;(data || []).forEach((track) => tracksByRequest.get(track.request_id)?.push(track))
+  return requests.map((request) => ({
+    ...request,
+    album_request_tracks: tracksByRequest.get(request.id) || []
+  }))
+}
+
 export const sargamBackend = {
   configured: isSupabaseConfigured,
 
@@ -218,7 +236,7 @@ export const sargamBackend = {
   async getAlbums() {
     const { data, error } = await requireClient()
       .from('albums')
-      .select('id, title, description, artist, cover_path, position, tracks(id, title, artist, singer, composer, storage_path, duration, play_count, position)')
+      .select('id, title, description, artist, cover_path, position, tracks(id, title, artist, singer, composer, category, storage_path, duration, play_count, position)')
       .order('position', { ascending: true })
 
     if (error) throw error
@@ -235,6 +253,7 @@ export const sargamBackend = {
           artist: track.singer || track.artist || album.artist || 'Sargam.play',
           singer: track.singer || track.artist || album.artist || 'Sargam.play',
           composer: track.composer || '',
+          category: track.category || '',
           playCount: Number(track.play_count) || 0,
           url: publicUrl(track.storage_path),
           cover: albumCover,
@@ -308,13 +327,14 @@ export const sargamBackend = {
     if (profile?.role !== 'admin') throw new Error('Administrator access is required.')
     let query = requireClient()
       .from('album_requests')
-      .select('id, title, description, artist, cover_path, status, review_note, created_at, profiles!album_requests_requested_by_fkey(display_name, email), album_request_tracks(id, title, artist, singer, composer, file_name, position)')
+      .select('id, title, description, artist, cover_path, status, review_note, created_at, profiles!album_requests_requested_by_fkey(display_name, email)')
       .order('created_at', { ascending: false })
     if (pendingOnly) query = query.eq('status', 'pending')
 
     const { data, error } = await query
     if (error) throw error
-    return Promise.all((data || []).map(async (request) => {
+    const requestsWithTracks = await attachAlbumRequestTracks(data || [])
+    return Promise.all(requestsWithTracks.map(async (request) => {
       if (!request.cover_path) return { ...request, cover_url: null }
       const { data: signed, error: coverError } = await requireClient()
         .storage.from('music-requests').createSignedUrl(request.cover_path, 3600)
@@ -330,19 +350,19 @@ export const sargamBackend = {
     if (!session?.user) return []
     const { data, error } = await requireClient()
       .from('album_requests')
-      .select('id, title, status, review_note, created_at, album_request_tracks(id)')
+      .select('id, title, status, review_note, created_at')
       .eq('requested_by', session.user.id)
       .order('created_at', { ascending: false })
     if (error) throw error
-    return data || []
+    return attachAlbumRequestTracks(data || [])
   },
 
   async submitAlbumRequest({ title, description, artist, coverFile, audioFiles, trackCredits = [] }) {
     if (!session?.user) throw new Error('Log in before requesting a music folder.')
     if (!audioFiles?.length) throw new Error('Choose at least one audio track.')
     if (!title?.trim()) throw new Error('Enter a folder name.')
-    if (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim())) {
-      throw new Error('Enter both the singer and composer for every song.')
+    if (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim() || !['romance', 'lofi', 'acoustic', 'general'].includes(credit.category))) {
+      throw new Error('Enter the singer, composer, and category for every song.')
     }
     const client = requireClient()
     const folderTitle = title.trim()
@@ -395,14 +415,34 @@ export const sargamBackend = {
           artist: folderArtist,
           singer: trackCredits[index].singer.trim(),
           composer: trackCredits[index].composer.trim(),
+          category: trackCredits[index].category,
           file_name: file.name,
           storage_path: storagePath,
           position: index
         })
       }
 
-      const { error: tracksError } = await client.from('album_request_tracks').insert(requestTracks)
-      if (tracksError) throw tracksError
+      if (requestTracks.length !== audioFiles.length) {
+        throw new Error(`Only ${requestTracks.length} of ${audioFiles.length} song details were prepared. Please select the songs again.`)
+      }
+
+      // Save each track explicitly and verify the request can read every saved row
+      // before reporting success. This prevents a pending folder with no reviewable songs.
+      for (const track of requestTracks) {
+        const { error: trackError } = await client
+          .from('album_request_tracks')
+          .insert(track)
+        if (trackError) throw trackError
+      }
+
+      const { data: savedTracks, error: verifyError } = await client
+        .from('album_request_tracks')
+        .select('id')
+        .eq('request_id', request.id)
+      if (verifyError) throw verifyError
+      if ((savedTracks || []).length !== audioFiles.length) {
+        throw new Error(`The folder was uploaded, but only ${(savedTracks || []).length} of ${audioFiles.length} songs were saved. Please try again.`)
+      }
       return request.id
     } catch (error) {
       if (uploadedPaths.length) await client.storage.from('music-requests').remove(uploadedPaths)
@@ -419,16 +459,22 @@ export const sargamBackend = {
     const client = requireClient()
     const { data: request, error } = await client
       .from('album_requests')
-      .select('id, title, description, artist, cover_path, status, album_request_tracks(id, title, artist, singer, composer, file_name, storage_path, position)')
+      .select('id, title, description, artist, cover_path, status')
       .eq('id', requestId)
       .single()
     if (error) throw error
     if (request.status !== 'pending') throw new Error('This request has already been reviewed.')
 
+    const { data: requestTracks, error: tracksError } = await client
+      .from('album_request_tracks')
+      .select('id, title, artist, singer, composer, category, file_name, storage_path, position')
+      .eq('request_id', requestId)
+      .order('position', { ascending: true })
+    if (tracksError) throw tracksError
+
     let approvedAlbumId = null
     if (decision === 'approved') {
-      const sortedTracks = [...(request.album_request_tracks || [])]
-        .sort((a, b) => a.position - b.position)
+      const sortedTracks = requestTracks || []
       if (!sortedTracks.length) throw new Error('This request contains no tracks.')
 
       const audioFiles = []
@@ -456,7 +502,7 @@ export const sargamBackend = {
         artist: request.artist,
         coverFile,
         audioFiles,
-        trackCredits: sortedTracks.map((track) => ({ singer: track.singer, composer: track.composer }))
+        trackCredits: sortedTracks.map((track) => ({ singer: track.singer, composer: track.composer, category: track.category || 'general' }))
       })
       approvedAlbumId = album.id
     } else if (decision !== 'rejected') {
@@ -517,8 +563,8 @@ export const sargamBackend = {
       throw new Error('Only an administrator can add music folders.')
     }
     if (!audioFiles?.length) throw new Error('Choose at least one audio file.')
-    if (requireCredits && (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim()))) {
-      throw new Error('Enter both the singer and composer for every selected song.')
+    if (requireCredits && (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim() || !['romance', 'lofi', 'acoustic', 'general'].includes(credit.category)))) {
+      throw new Error('Enter the singer, composer, and category for every selected song.')
     }
 
     const { data: album, error: albumError } = await client
@@ -557,6 +603,7 @@ export const sargamBackend = {
           artist,
           singer: trackCredits[index]?.singer?.trim() || '',
           composer: trackCredits[index]?.composer?.trim() || '',
+          category: trackCredits[index]?.category || 'general',
           storage_path: storagePath,
           position: index
         })
@@ -587,8 +634,8 @@ export const sargamBackend = {
       throw new Error('Only an administrator can edit music folders.')
     }
     if (!title?.trim()) throw new Error('Enter a folder name.')
-    if (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim())) {
-      throw new Error('Enter both the singer and composer for every new song.')
+    if (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim() || !['romance', 'lofi', 'acoustic', 'general'].includes(credit.category))) {
+      throw new Error('Enter the singer, composer, and category for every new song.')
     }
 
     const { data: album, error: albumError } = await client
@@ -638,6 +685,7 @@ export const sargamBackend = {
           artist: artist.trim() || 'Sargam.play',
           singer: trackCredits[index].singer.trim(),
           composer: trackCredits[index].composer.trim(),
+          category: trackCredits[index].category,
           storage_path: storagePath,
           position: startPosition + index
         })
@@ -660,7 +708,8 @@ export const sargamBackend = {
           title: edit.title.trim(),
           artist: albumUpdate.artist,
           singer: edit.singer.trim(),
-          composer: edit.composer.trim()
+          composer: edit.composer.trim(),
+          category: edit.category || 'general'
         }).eq('id', edit.id).eq('album_id', albumId)
         if (error) throw error
       }

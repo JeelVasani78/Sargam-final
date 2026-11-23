@@ -51,6 +51,17 @@
   const likedIds = new Set(
     JSON.parse(localStorage.getItem('sargam_liked_songs') || '[]')
   );
+  const LIKED_FOLDERS_STORAGE_KEY = 'sargam_liked_song_folders_v1';
+  let likedFolders = [];
+  let selectedLikedFolder = 'all';
+  try {
+    const storedFolders = JSON.parse(localStorage.getItem(LIKED_FOLDERS_STORAGE_KEY) || '[]');
+    likedFolders = Array.isArray(storedFolders) ? storedFolders.filter((folder) =>
+      folder && typeof folder.id === 'string' && typeof folder.name === 'string' && Array.isArray(folder.trackIds)
+    ) : [];
+  } catch {
+    likedFolders = [];
+  }
 
   const el = {
     cards: $('cardContainer'),
@@ -81,6 +92,11 @@
     volumeIcon: $('volumeIcon'),
 
     filterChips: $('filterChips'),
+    likedCollections: $('likedCollections'),
+    likedFolderList: $('likedFolderList'),
+    likedFolderDialog: $('likedFolderDialog'),
+    likedFolderForm: $('likedFolderForm'),
+    likedFolderName: $('likedFolderName'),
     overlay: $('sidebarOverlay'),
     sidebar: $('sidebar'),
     canvas: $('visualizerCanvas')
@@ -339,6 +355,7 @@
           artist: credit.singer || credit.artist || artistFrom(filename),
           singer: credit.singer || credit.artist || artistFrom(filename),
           composer: credit.composer || '',
+          category: credit.category || '',
           playCount: Number(localPlayCounts[link.url.href]) || 0,
           url: link.url.href,
           cover: imageLink
@@ -420,7 +437,7 @@
       album.title,
       album.description,
       album.cover,
-      album.songs.map((song) => [song.id, song.name, song.artist, song.cover, song.playCount || 0])
+      album.songs.map((song) => [song.id, song.name, song.artist, song.singer, song.composer, song.category, song.cover, song.playCount || 0])
     ]));
   }
 
@@ -599,6 +616,91 @@
       return;
     }
 
+    if (['romance', 'lofi', 'acoustic'].includes(category)) {
+      const categorySongs = getCategorySongs(category).filter((song) =>
+        `${song.name} ${song.artist} ${song.singer || ''} ${song.composer || ''}`.toLowerCase().includes(searchTerm)
+      );
+      const categoryLabel = { romance: 'Romantic', lofi: 'Lo-Fi Beats', acoustic: 'Acoustic & Calm' }[category];
+      if (el.sectionTitle) el.sectionTitle.textContent = categoryLabel;
+      if (el.heroTitle) el.heroTitle.textContent = categoryLabel;
+      if (el.heroSubtitle) el.heroSubtitle.textContent = `${categorySongs.length} song${categorySongs.length === 1 ? '' : 's'} in this category.`;
+      if (!categorySongs.length) {
+        el.cards.innerHTML = `<div class="status-message">No songs are in ${categoryLabel} yet. Choose this category when adding a song.</div>`;
+        return;
+      }
+      categorySongs.forEach((song, index) => {
+        const card = document.createElement('article');
+        card.className = 'card category-song-card';
+        card.innerHTML = `
+          <div class="card-img-wrapper">
+            <img src="${escapeHtml(song.cover || DEFAULT_COVER)}" alt="${escapeHtml(song.name)} cover" loading="lazy">
+            <button class="play" type="button" aria-label="Play ${escapeHtml(song.name)}" title="Play song"><img src="splay.svg" alt="Play"></button>
+          </div>
+          <h2>${escapeHtml(song.name)}</h2>
+          <p>${escapeHtml(song.singer || song.artist || 'Unknown artist')}${song.composer ? ` · Composer: ${escapeHtml(song.composer)}` : ''}</p>
+        `;
+        card.addEventListener('click', () => {
+          currentSongs = categorySongs.slice();
+          currentSongIndex = -1;
+          currentAlbumIndex = -1;
+          queueMode = category;
+          playSong(index);
+        });
+        el.cards.appendChild(card);
+      });
+      return;
+    }
+
+    if (category === 'liked') {
+      const likedSongs = getVisibleLikedSongs().filter((song) =>
+        `${song.name} ${song.artist} ${song.singer || ''} ${song.composer || ''}`.toLowerCase().includes(searchTerm)
+      );
+      const selectedFolder = likedFolders.find((folder) => folder.id === selectedLikedFolder);
+      if (el.sectionTitle) el.sectionTitle.textContent = selectedFolder?.name || 'Liked Songs';
+      if (!likedSongs.length) {
+        el.cards.innerHTML = `<div class="status-message">${selectedFolder ? 'This folder is empty. Choose All liked, then tap the folder icon on a song to add it here.' : 'No liked songs yet. Tap the heart on any song to save one here.'}</div>`;
+        return;
+      }
+      likedSongs.forEach((song, index) => {
+        const card = document.createElement('article');
+        card.className = 'card liked-song-card';
+        card.innerHTML = `
+          <div class="card-img-wrapper">
+            <img src="${escapeHtml(song.cover || DEFAULT_COVER)}" alt="${escapeHtml(song.name)} cover" loading="lazy">
+            <button class="play" type="button" aria-label="Play ${escapeHtml(song.name)}" title="Play song"><img src="splay.svg" alt="Play"></button>
+          </div>
+          <h2>${escapeHtml(song.name)}</h2>
+          <p>${escapeHtml(song.singer || song.artist || 'Unknown artist')}${song.composer ? ` · Composer: ${escapeHtml(song.composer)}` : ''}</p>
+          <select class="liked-song-folder-select" aria-label="Add ${escapeHtml(song.name)} to a folder" title="Add to folder"><option value="" aria-label="Add to folder"></option>${likedFolders.map((folder) => `<option value="${escapeHtml(folder.id)}" ${folder.trackIds.includes(song.id) ? 'disabled' : ''}>${escapeHtml(folder.name)}${folder.trackIds.includes(song.id) ? ' (Added)' : ''}</option>`).join('')}${selectedLikedFolder !== 'all' ? '<option value="__remove__">Remove from this folder</option>' : ''}</select>
+        `;
+        card.querySelector('.liked-song-folder-select')?.addEventListener('click', (event) => event.stopPropagation());
+        card.querySelector('.liked-song-folder-select')?.addEventListener('change', (event) => {
+          event.stopPropagation();
+          if (event.target.value === '__remove__') {
+            const folder = likedFolders.find((entry) => entry.id === selectedLikedFolder);
+            if (folder) folder.trackIds = folder.trackIds.filter((id) => id !== song.id);
+          } else {
+            const folder = likedFolders.find((entry) => entry.id === event.target.value);
+            if (folder && !folder.trackIds.includes(song.id)) folder.trackIds.push(song.id);
+          }
+          saveLikedFolders();
+          renderLikedFolders();
+          renderCards(el.search?.value || '', 'liked');
+          renderSongList();
+        });
+        card.addEventListener('click', (event) => {
+          if (event.target.closest('.liked-song-folder-select')) return;
+          currentSongs = likedSongs.slice();
+          currentSongIndex = -1;
+          currentAlbumIndex = -1;
+          queueMode = 'liked';
+          playSong(index);
+        });
+        el.cards.appendChild(card);
+      });
+      return;
+    }
+
     // The virtual All Songs folder is always the first card in the main
     // playlist view. It contains every discovered track across all albums.
     const allSongs = albums.flatMap((album) => album.songs);
@@ -729,7 +831,7 @@
     // Use the liked catalog for display, while transport controls continue
     // operating on the song and queue that are actually playing.
     const categorySongs = activeCategory === 'liked'
-      ? getLikedSongs()
+      ? getVisibleLikedSongs()
       : activeCategory === 'all'
         ? globalQuery ? albums.flatMap((album) => album.songs) : currentSongs
         : getCategorySongs(activeCategory);
@@ -747,7 +849,7 @@
     if (el.sectionTitle) {
       el.sectionTitle.textContent = globalQuery
         ? `${activeCategory === 'pop' ? 'Top Hits · ' : ''}Songs matching “${el.search.value.trim()}”`
-        : activeCategory === 'liked' ? 'Liked Songs' : activeCategory === 'pop' ? 'Top Hits' : 'Your Playlists';
+        : activeCategory === 'liked' ? (likedFolders.find((folder) => folder.id === selectedLikedFolder)?.name || 'Liked Songs') : activeCategory === 'pop' ? 'Top Hits' : 'Your Playlists';
     }
 
     el.songs.innerHTML = '';
@@ -766,6 +868,8 @@
 
       item.textContent = globalQuery && displayedSongs.length === 0
         ? `No songs match “${el.search.value.trim()}”. Try a song, singer, or composer name.`
+        : activeCategory === 'liked' && selectedLikedFolder !== 'all' && displayedSongs.length === 0
+        ? 'This folder is empty. Go to All liked and use Organize beside a song to add it here.'
         : activeCategory === 'liked' && getLikedSongs().length === 0
         ? 'No liked songs yet. Like a song with the heart button to add one here.'
         : displayedSongs.length
@@ -823,8 +927,27 @@
             src="${icon}"
             alt="Play"
           >
+          ${activeCategory === 'liked' ? `<select class="liked-song-folder-select" aria-label="Add ${escapeHtml(song.name)} to a folder"><option value="" aria-label="Organize into a folder"></option>${likedFolders.map((folder) => `<option value="${escapeHtml(folder.id)}" ${folder.trackIds.includes(song.id) ? 'disabled' : ''}>${escapeHtml(folder.name)}${folder.trackIds.includes(song.id) ? ' · Added' : ''}</option>`).join('')}${selectedLikedFolder !== 'all' ? '<option value="__remove__">Remove from this folder</option>' : ''}</select>` : ''}
         </div>
       `;
+
+      const folderSelect = item.querySelector('.liked-song-folder-select');
+      if (folderSelect) folderSelect.title = 'Add to folder';
+      folderSelect?.addEventListener('click', (event) => event.stopPropagation());
+      folderSelect?.addEventListener('change', (event) => {
+        event.stopPropagation();
+        const folderId = event.target.value;
+        if (folderId === '__remove__') {
+          const folder = likedFolders.find((entry) => entry.id === selectedLikedFolder);
+          if (folder) folder.trackIds = folder.trackIds.filter((id) => id !== song.id);
+        } else {
+          const folder = likedFolders.find((entry) => entry.id === folderId);
+          if (folder && !folder.trackIds.includes(song.id)) folder.trackIds.push(song.id);
+        }
+        saveLikedFolders();
+        renderLikedFolders();
+        renderSongList();
+      });
 
       item.addEventListener('click', () => {
         if (globalQuery && activeCategory === 'all') {
@@ -833,7 +956,7 @@
           currentAlbumIndex = -1;
         } else if (activeCategory !== 'all') {
           currentSongs = activeCategory === 'liked'
-            ? getLikedSongs()
+            ? getVisibleLikedSongs()
             : getCategorySongs(activeCategory);
           queueMode = activeCategory === 'liked'
             ? 'liked'
@@ -1098,18 +1221,110 @@
     );
   }
 
+  function getVisibleLikedSongs() {
+    const likedSongs = getLikedSongs();
+    if (selectedLikedFolder === 'all') return likedSongs;
+    const folder = likedFolders.find((item) => item.id === selectedLikedFolder);
+    return folder ? likedSongs.filter((song) => folder.trackIds.includes(song.id)) : likedSongs;
+  }
+
+  function saveLikedFolders() {
+    try {
+      localStorage.setItem(LIKED_FOLDERS_STORAGE_KEY, JSON.stringify(likedFolders));
+    } catch (error) {
+      console.warn('Could not save liked song folders:', error);
+    }
+  }
+
+  function renderLikedFolders() {
+    if (!el.likedCollections || !el.likedFolderList) return;
+    el.likedCollections.hidden = activeCategory !== 'liked';
+    if (activeCategory !== 'liked') return;
+
+    const entries = [
+      { id: 'all', name: 'All liked', count: getLikedSongs().length, icon: 'liked' },
+      ...likedFolders.map((folder) => ({
+        ...folder,
+        count: getLikedSongs().filter((song) => folder.trackIds.includes(song.id)).length,
+        icon: 'folder'
+      }))
+    ];
+    el.likedFolderList.innerHTML = '';
+    entries.forEach((folder) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = `liked-folder-chip${selectedLikedFolder === folder.id ? ' active' : ''}`;
+      chip.setAttribute('aria-pressed', String(selectedLikedFolder === folder.id));
+      const folderIcon = folder.icon === 'liked'
+        ? '<svg viewBox="0 0 24 24" focusable="false"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"/></svg>'
+        : '<svg viewBox="0 0 24 24" focusable="false"><path d="M3 6.75A1.75 1.75 0 0 1 4.75 5h5.1l2 2h7.4A1.75 1.75 0 0 1 21 8.75v8.5A1.75 1.75 0 0 1 19.25 19h-14A2.25 2.25 0 0 1 3 16.75z"/><path d="M3.25 9h17.5"/></svg>';
+      chip.innerHTML = `<span class="liked-folder-chip-icon${folder.id === 'all' ? ' liked-folder-chip-icon--liked' : ''}" aria-hidden="true">${folderIcon}</span><span class="liked-folder-chip-name">${escapeHtml(folder.name)}</span><span class="liked-folder-count">${folder.count}</span>`;
+      chip.addEventListener('click', () => {
+        selectedLikedFolder = folder.id;
+        renderLikedFolders();
+        renderCards(el.search?.value || '', 'liked');
+        renderSongList();
+        if (el.sectionTitle) el.sectionTitle.textContent = folder.id === 'all' ? 'Liked Songs' : folder.name;
+      });
+      el.likedFolderList.appendChild(chip);
+
+      if (folder.id !== 'all') {
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'liked-folder-delete';
+        remove.setAttribute('aria-label', `Delete ${folder.name} folder`);
+        remove.title = `Delete ${folder.name}`;
+        remove.textContent = 'x';
+        remove.addEventListener('click', () => {
+          likedFolders = likedFolders.filter((item) => item.id !== folder.id);
+          if (selectedLikedFolder === folder.id) selectedLikedFolder = 'all';
+          saveLikedFolders();
+          renderLikedFolders();
+          renderCards(el.search?.value || '', 'liked');
+          renderSongList();
+        });
+        el.likedFolderList.appendChild(remove);
+      }
+    });
+  }
+
+  function createLikedFolder(name) {
+    const cleanName = name.trim().replace(/\s+/g, ' ');
+    if (!cleanName) return false;
+    if (likedFolders.some((folder) => folder.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) {
+      el.likedFolderName?.setCustomValidity('You already have a folder with this name.');
+      el.likedFolderName?.reportValidity();
+      return false;
+    }
+    likedFolders.push({ id: `folder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, name: cleanName, trackIds: [] });
+    selectedLikedFolder = likedFolders[likedFolders.length - 1].id;
+    saveLikedFolders();
+    renderLikedFolders();
+    renderCards(el.search?.value || '', 'liked');
+    renderSongList();
+    if (el.sectionTitle) el.sectionTitle.textContent = cleanName;
+    return true;
+  }
+
   function getCategorySongs(category) {
     const categoryTerm = String(category || '').toLowerCase();
 
     if (categoryTerm === 'pop') return getTopHitSongs();
 
-    return albums
-      .filter((album) =>
-        `${album.title} ${album.description}`
-          .toLowerCase()
-          .includes(categoryTerm)
-      )
-      .flatMap((album) => album.songs);
+    const categoryAliases = {
+      romance: /romance|romantic/i,
+      lofi: /lo\s*-?\s*fi/i,
+      acoustic: /acoustic|calm/i
+    };
+    const legacyPattern = categoryAliases[categoryTerm];
+    return albums.flatMap((album) => album.songs.filter((song) => {
+      const savedCategory = String(song.category || '').toLowerCase();
+      if (savedCategory) {
+        const normalizedCategory = savedCategory === 'romantic' ? 'romance' : savedCategory.replace(/[-\s]/g, '');
+        return normalizedCategory === categoryTerm;
+      }
+      return legacyPattern?.test(`${album.title} ${album.description}`) || false;
+    }));
   }
 
   function getTopHitSongs() {
@@ -1121,15 +1336,17 @@
   function refreshLikedView() {
     if (activeCategory !== 'liked') return;
 
-    const likedSongs = getLikedSongs();
+    renderLikedFolders();
+    const likedSongs = getVisibleLikedSongs();
+    const selectedFolder = likedFolders.find((folder) => folder.id === selectedLikedFolder);
 
     // Do not replace the active playback queue here. If the currently
     // playing song is unliked, it disappears from this visible list but
     // remains in the queue until the user selects another song. This keeps
     // play/pause, next, previous, and seek controls working normally.
-    if (el.libraryTitle) el.libraryTitle.textContent = 'Liked Songs';
-    if (el.sectionTitle) el.sectionTitle.textContent = 'Liked Songs';
-    if (el.heroTitle) el.heroTitle.textContent = 'Your Liked Songs';
+    if (el.libraryTitle) el.libraryTitle.textContent = selectedFolder?.name || 'Liked Songs';
+    if (el.sectionTitle) el.sectionTitle.textContent = selectedFolder?.name || 'Liked Songs';
+    if (el.heroTitle) el.heroTitle.textContent = selectedFolder?.name || 'Your Liked Songs';
     if (el.heroSubtitle) {
       el.heroSubtitle.textContent = `${likedSongs.length} liked song${likedSongs.length === 1 ? '' : 's'} saved on this device.`;
     }
@@ -1790,6 +2007,8 @@
             const trackCredit = document.createElement('span');
             trackCredit.textContent = `Singer: ${track.singer || '—'} · Composer: ${track.composer || '—'}`;
             trackItem.append(trackName, trackCredit);
+            const categoryLabel = { romance: 'Romantic', lofi: 'Lo-Fi', acoustic: 'Acoustic & Calm', general: 'General' }[track.category] || 'General';
+            trackCredit.textContent += ` | Category: ${categoryLabel}`;
             trackList.appendChild(trackItem);
           });
         submittedTracks.append(trackSummary, trackList);
@@ -1839,7 +2058,13 @@
     try {
       const requests = await window.sargamBackend.getMyAlbumRequests();
       if (!requests.length) { list.textContent = 'You have not sent a folder request yet.'; return; }
-      requests.forEach((request) => {
+      const pendingRequests = requests
+        .filter((request) => request.status === 'pending')
+        .slice(0, 2);
+      const reviewedRequests = requests.filter((request) => request.status !== 'pending');
+      const visibleRequests = [...pendingRequests, ...reviewedRequests]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      visibleRequests.forEach((request) => {
         const row = document.createElement('div');
         row.className = 'my-request-row';
         const title = document.createElement('strong');
@@ -1853,6 +2078,32 @@
         list.appendChild(row);
       });
     } catch (error) { list.textContent = `Your requests could not be loaded: ${error.message}`; }
+  }
+
+  function createTrackCategoryField(value = 'general', editField = false) {
+    const label = document.createElement('label');
+    label.className = 'admin-field';
+    const caption = document.createElement('span');
+    caption.textContent = 'Category';
+    const select = document.createElement('select');
+    select.required = true;
+    select.setAttribute('aria-label', 'Song category');
+    if (editField) select.dataset.editTrackField = 'category';
+    else select.dataset.trackCategory = 'true';
+    [
+      ['romance', 'Romantic'],
+      ['lofi', 'Lo-Fi'],
+      ['acoustic', 'Acoustic & Calm'],
+      ['general', 'General']
+    ].forEach(([category, labelText]) => {
+      const option = document.createElement('option');
+      option.value = category;
+      option.textContent = labelText;
+      option.selected = (value || 'general') === category;
+      select.appendChild(option);
+    });
+    label.append(caption, select);
+    return label;
   }
 
   function renderAdminTrackCredits(files) {
@@ -1882,6 +2133,7 @@
         label.append(labelName, input);
         fields.appendChild(label);
       });
+      fields.appendChild(createTrackCategoryField());
       row.append(title, fields);
       list.appendChild(row);
     });
@@ -1915,6 +2167,7 @@
         label.append(caption, input);
         fields.appendChild(label);
       });
+      fields.appendChild(createTrackCategoryField());
       row.append(title, fields);
       list.appendChild(row);
     });
@@ -1924,7 +2177,8 @@
     return [...($('requestTrackCreditsList')?.querySelectorAll('.request-track-credit-row') || [])]
       .map((row) => ({
         singer: row.querySelector('[data-request-track-credit="singer"]')?.value.trim() || '',
-        composer: row.querySelector('[data-request-track-credit="composer"]')?.value.trim() || ''
+        composer: row.querySelector('[data-request-track-credit="composer"]')?.value.trim() || '',
+        category: row.querySelector('[data-track-category]')?.value || 'general'
       }));
   }
 
@@ -1932,7 +2186,8 @@
     return [...($('adminTrackCreditsList')?.querySelectorAll('.admin-track-credit-row') || [])]
       .map((row) => ({
         singer: row.querySelector('[data-track-credit="singer"]')?.value.trim() || '',
-        composer: row.querySelector('[data-track-credit="composer"]')?.value.trim() || ''
+        composer: row.querySelector('[data-track-credit="composer"]')?.value.trim() || '',
+        category: row.querySelector('[data-track-category]')?.value || 'general'
       }));
   }
 
@@ -1976,6 +2231,7 @@
       composerInput.value = song.composer || '';
       composerInput.dataset.editTrackField = 'composer';
       composerLabel.append(composerText, composerInput);
+      const categoryLabel = createTrackCategoryField(song.category, true);
 
       const removeLabel = document.createElement('label');
       removeLabel.className = 'admin-edit-track-remove';
@@ -1986,7 +2242,7 @@
       removeText.textContent = 'Remove this song';
       removeLabel.append(removeInput, removeText);
 
-      row.append(titleLabel, singerLabel, composerLabel, removeLabel);
+      row.append(titleLabel, singerLabel, composerLabel, categoryLabel, removeLabel);
       list.appendChild(row);
     });
   }
@@ -2018,6 +2274,7 @@
         label.append(labelTextNode, input);
         fields.appendChild(label);
       });
+      fields.appendChild(createTrackCategoryField());
 
       row.append(title, fields);
       list.appendChild(row);
@@ -2040,7 +2297,8 @@
     return [...($('editAlbumNewTrackList')?.querySelectorAll('.admin-edit-new-track-row') || [])]
       .map((row) => ({
         singer: row.querySelector('[data-new-track-credit="singer"]')?.value.trim() || '',
-        composer: row.querySelector('[data-new-track-credit="composer"]')?.value.trim() || ''
+        composer: row.querySelector('[data-new-track-credit="composer"]')?.value.trim() || '',
+        category: row.querySelector('[data-track-category]')?.value || 'general'
       }));
   }
 
@@ -2117,6 +2375,25 @@
   // --------------------------------------------------
 
   function bindEvents() {
+    $('createLikedFolder')?.addEventListener('click', () => {
+      if (!el.likedFolderDialog?.open) el.likedFolderDialog?.showModal();
+      if (el.likedFolderName) {
+        el.likedFolderName.value = '';
+        el.likedFolderName.setCustomValidity('');
+        el.likedFolderName.focus();
+      }
+    });
+    $('closeLikedFolderDialog')?.addEventListener('click', () => el.likedFolderDialog?.close());
+    $('cancelLikedFolder')?.addEventListener('click', () => el.likedFolderDialog?.close());
+    el.likedFolderName?.addEventListener('input', () => el.likedFolderName.setCustomValidity(''));
+    el.likedFolderForm?.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (createLikedFolder(el.likedFolderName?.value || '')) {
+        el.likedFolderDialog?.close();
+        el.likedFolderForm.reset();
+      }
+    });
+
     window.addEventListener('resize', setupTrackNameDisplay);
 
     const appearanceMenu = $('appearanceMenu');
@@ -2276,12 +2553,15 @@
           chip.classList.add('active');
 
           activeCategory = chip.dataset.category || 'all';
+          renderLikedFolders();
 
           if (activeCategory === 'liked') {
             el.sectionTitle.textContent = 'Liked Songs';
             el.heroTitle.textContent = 'Your Liked Songs';
 
-            const likedSongs = getLikedSongs();
+            selectedLikedFolder = 'all';
+            renderLikedFolders();
+            const likedSongs = getVisibleLikedSongs();
 
             el.heroSubtitle.textContent =
               `${likedSongs.length} liked song` +
@@ -2465,6 +2745,11 @@
     });
     $('musicRequestForm')?.addEventListener('submit', async (event) => {
       event.preventDefault();
+      const form = event.currentTarget;
+      // Fast Refresh can re-run this legacy script while retaining the same DOM.
+      // Ignore duplicate submit listeners so one click creates only one request.
+      if (form.dataset.submittingRequest === 'true') return;
+      form.dataset.submittingRequest = 'true';
       const submit = $('submitMusicRequest');
       submit.disabled = true;
       setFormMessage('requestFormMessage', 'Uploading your folder and songs…');
@@ -2481,12 +2766,13 @@
         await window.sargamBackend.submitAlbumRequest(requestData);
         $('musicRequestForm').reset();
         renderRequestTrackCredits([]);
-        setFormMessage('requestFormMessage', 'Your folder was sent with its details and song credits. It will appear after an admin approves it.', 'success');
+        setFormMessage('requestFormMessage', `Your folder and ${audioFiles.length} song${audioFiles.length === 1 ? '' : 's'} were sent for admin review.`, 'success');
         await renderMyRequests();
       } catch (error) {
         setFormMessage('requestFormMessage', error.message, 'error');
       } finally {
         submit.disabled = false;
+        form.dataset.submittingRequest = 'false';
       }
     });
     $('requestAlbumTracks')?.addEventListener('change', (event) => {
@@ -2515,6 +2801,7 @@
           title: row.querySelector('[data-edit-track-field="title"]')?.value.trim() || '',
           singer: row.querySelector('[data-edit-track-field="singer"]')?.value.trim() || '',
           composer: row.querySelector('[data-edit-track-field="composer"]')?.value.trim() || '',
+          category: row.querySelector('[data-edit-track-field="category"]')?.value || 'general',
           remove: Boolean(row.querySelector('[data-remove-track]')?.checked)
         }));
       const audioFiles = [...($('editAlbumTracks')?.files || [])];

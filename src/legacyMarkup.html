@@ -138,9 +138,16 @@
                         <button class="filter-chip" data-category="romance">Romantic</button>
                         <button class="filter-chip" data-category="lofi">Lo-Fi Beats</button>
                         <button class="filter-chip" data-category="pop">Top Hits</button>
-                        <button class="filter-chip" data-category="acoustic">Acoustic & Calm</button>
                         <button class="filter-chip" data-category="liked">Liked Songs</button>
                     </div>
+
+                    <section class="liked-collections" id="likedCollections" hidden aria-label="Liked song folders">
+                        <div class="liked-collections-heading">
+                            <div><strong>Your song folders</strong><span>Group your liked songs by mood, moment, or anything you like.</span></div>
+                            <button class="liked-create-button" id="createLikedFolder" type="button">＋ New folder</button>
+                        </div>
+                        <div class="liked-folder-list" id="likedFolderList" role="group" aria-label="Filter liked songs by folder"></div>
+                    </section>
 
                     <!-- Hero Visualizer Banner -->
                     <div class="playlist-hero">
@@ -234,7 +241,7 @@
                             <div class="admin-track-credits" id="adminTrackCredits" hidden>
                                 <div class="admin-form-heading">
                                     <h3>Song credits</h3>
-                                    <p>Add the singer and composer for each selected track.</p>
+                                    <p>Add the singer and composer, then choose a category for each selected song.</p>
                                 </div>
                                 <div class="admin-track-credits-list" id="adminTrackCreditsList"></div>
                             </div>
@@ -303,6 +310,21 @@
 
     </div>
 
+    <dialog class="liked-folder-dialog" id="likedFolderDialog" aria-labelledby="likedFolderDialogTitle">
+        <form id="likedFolderForm" method="dialog">
+            <button class="liked-dialog-close" type="button" id="closeLikedFolderDialog" aria-label="Close">×</button>
+            <span class="liked-dialog-icon" aria-hidden="true">♫</span>
+            <h2 id="likedFolderDialogTitle">Create a song folder</h2>
+            <p>Give your liked songs a place of their own. You can add or remove songs anytime.</p>
+            <label for="likedFolderName">Folder name</label>
+            <input id="likedFolderName" name="folderName" maxlength="40" placeholder="e.g. Late night, Road trip" required autocomplete="off">
+            <div class="liked-dialog-actions">
+                <button class="liked-cancel-button" type="button" id="cancelLikedFolder">Cancel</button>
+                <button class="liked-create-button" type="submit">Create folder</button>
+            </div>
+        </form>
+    </dialog>
+
     <!-- Admin editor for an existing music folder and its tracks. -->
     <div class="modal-backdrop" id="editAlbumModal" role="dialog" aria-modal="true" aria-labelledby="editAlbumTitleHeading">
         <div class="modal-box admin-edit-album-box">
@@ -334,14 +356,14 @@
                 <section class="admin-edit-tracks-section">
                     <div class="admin-form-heading">
                         <h3>Current songs</h3>
-                        <p>Edit credits or mark individual songs for removal.</p>
+                        <p>Edit credits or category, or mark individual songs for removal.</p>
                     </div>
                     <div class="admin-edit-track-list" id="editAlbumTrackList"></div>
                 </section>
                 <section class="admin-edit-tracks-section">
                     <div class="admin-form-heading">
                         <h3>Add songs</h3>
-                        <p>Select audio files and enter a singer and composer for each one.</p>
+                        <p>Select audio files and enter a singer, composer, and category for each one.</p>
                     </div>
                     <label class="admin-field">
                         <span>Audio tracks</span>
@@ -393,7 +415,7 @@
                 <section class="request-track-credits" id="requestTrackCredits" hidden>
                     <div class="admin-form-heading">
                         <h3>Song credits</h3>
-                        <p>Enter the singer and composer for every selected track.</p>
+                        <p>Enter the singer and composer, then choose a category for every selected song.</p>
                     </div>
                     <div class="request-track-credits-list" id="requestTrackCreditsList"></div>
                 </section>
@@ -401,6 +423,7 @@
             </form>
             <div class="my-requests-section">
                 <h3>Your requests</h3>
+                <p class="request-folder-help">Showing your 2 latest pending requests and all reviewed requests.</p>
                 <div class="my-request-list" id="myRequestList"></div>
             </div>
         </div>
