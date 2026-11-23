@@ -365,15 +365,39 @@
                 <img src="close.svg" alt="Close">
             </button>
             <h2>Request a music folder</h2>
-            <p class="modal-subtitle">Choose a folder with info.json and its audio files. It will be reviewed before appearing in the library.</p>
-            <form class="modal-form" id="musicRequestForm">
-                <div class="form-group">
-                    <label for="requestFolderFiles">Choose your prepared folder</label>
-                    <input id="requestFolderFiles" type="file" webkitdirectory directory multiple required>
-                    <small class="request-folder-help">Include info.json, audio tracks, and an optional cover image in the folder.</small>
-                </div>
+            <p class="modal-subtitle">Fill in the same folder details, cover, tracks, and song credits used when adding music. An admin will review it before it appears in the library.</p>
+            <form class="modal-form request-album-form" id="musicRequestForm">
                 <p class="auth-form-message" id="requestFormMessage" role="status"></p>
-                <button class="modal-submit-btn" id="submitMusicRequest" type="submit">Send for review</button>
+                <div class="admin-form-grid">
+                    <label class="admin-field">
+                        <span>Folder / album name</span>
+                        <input id="requestAlbumTitle" type="text" placeholder="e.g. Evening Sessions" required>
+                    </label>
+                    <label class="admin-field">
+                        <span>Artist</span>
+                        <input id="requestAlbumArtist" type="text" placeholder="Artist or collection name">
+                    </label>
+                    <label class="admin-field admin-field-wide">
+                        <span>Description</span>
+                        <input id="requestAlbumDescription" type="text" placeholder="A short description for this folder">
+                    </label>
+                    <label class="admin-field">
+                        <span>Cover image <small>(optional)</small></span>
+                        <input id="requestAlbumCover" type="file" accept="image/*">
+                    </label>
+                    <label class="admin-field">
+                        <span>Audio tracks</span>
+                        <input id="requestAlbumTracks" type="file" accept="audio/*,.flac" multiple required>
+                    </label>
+                </div>
+                <section class="request-track-credits" id="requestTrackCredits" hidden>
+                    <div class="admin-form-heading">
+                        <h3>Song credits</h3>
+                        <p>Enter the singer and composer for every selected track.</p>
+                    </div>
+                    <div class="request-track-credits-list" id="requestTrackCreditsList"></div>
+                </section>
+                <button class="modal-submit-btn" id="submitMusicRequest" type="submit">Send folder for review</button>
             </form>
             <div class="my-requests-section">
                 <h3>Your requests</h3>

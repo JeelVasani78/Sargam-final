@@ -1769,9 +1769,32 @@
         const requester = request.profiles?.display_name || request.profiles?.email || 'A listener';
         const meta = document.createElement('p');
         meta.textContent = `${requester} · ${request.album_request_tracks?.length || 0} tracks · ${new Date(request.created_at).toLocaleDateString()}`;
+        const artist = document.createElement('span');
+        artist.textContent = `Artist: ${request.artist || 'Sargam.play'}`;
         const description = document.createElement('span');
-        description.textContent = request.description || request.artist || 'No description provided';
-        details.append(title, meta, description);
+        description.textContent = request.description || 'No description provided';
+        details.append(title, meta, artist, description);
+
+        const submittedTracks = document.createElement('details');
+        submittedTracks.className = 'admin-request-track-review';
+        const trackSummary = document.createElement('summary');
+        trackSummary.textContent = `Review songs and credits (${request.album_request_tracks?.length || 0})`;
+        const trackList = document.createElement('ul');
+        (request.album_request_tracks || [])
+          .slice()
+          .sort((a, b) => a.position - b.position)
+          .forEach((track) => {
+            const trackItem = document.createElement('li');
+            const trackName = document.createElement('strong');
+            trackName.textContent = track.title;
+            const trackCredit = document.createElement('span');
+            trackCredit.textContent = `Singer: ${track.singer || '—'} · Composer: ${track.composer || '—'}`;
+            trackItem.append(trackName, trackCredit);
+            trackList.appendChild(trackItem);
+          });
+        submittedTracks.append(trackSummary, trackList);
+        details.appendChild(submittedTracks);
+
         const actions = document.createElement('div');
         actions.className = 'admin-request-actions';
         [['Approve', 'approved'], ['Reject', 'rejected']].forEach(([label, decision]) => {
@@ -1794,6 +1817,13 @@
           });
           actions.appendChild(button);
         });
+        if (request.cover_url) {
+          const cover = document.createElement('img');
+          cover.className = 'admin-request-cover';
+          cover.src = request.cover_url;
+          cover.alt = `${request.title} requested cover`;
+          row.appendChild(cover);
+        }
         row.append(details, actions);
         list.appendChild(row);
       });
@@ -1823,39 +1853,6 @@
         list.appendChild(row);
       });
     } catch (error) { list.textContent = `Your requests could not be loaded: ${error.message}`; }
-  }
-
-  function readFolderRequest(files) {
-    const fileList = [...(files || [])];
-    const infoFile = fileList.find((file) => file.name.toLowerCase() === 'info.json');
-    if (!infoFile) throw new Error('This folder needs an info.json file with its title and description.');
-    const audioFiles = fileList.filter((file) => AUDIO_EXTENSIONS.test(file.name));
-    if (!audioFiles.length) throw new Error('No supported audio files were found in the selected folder.');
-    return infoFile.text().then((text) => {
-      const info = JSON.parse(text);
-      const firstPath = infoFile.webkitRelativePath || infoFile.name;
-      const folderName = firstPath.split('/')[0] || 'Music folder';
-      const coverName = info.cover?.toLowerCase();
-      const coverFile = fileList.find((file) => IMAGE_EXTENSIONS.test(file.name) &&
-        (coverName ? file.name.toLowerCase() === coverName : /^(cover|folder|allsongs)\./i.test(file.name))) || null;
-      const sortedAudioFiles = audioFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-      const creditList = Array.isArray(info.songs) ? info.songs : Array.isArray(info.tracks) ? info.tracks : [];
-      const trackCredits = sortedAudioFiles.map((file, index) => {
-        const credit = creditList.find((entry) => {
-          const fileName = String(entry.file || entry.filename || entry.title || '').toLowerCase();
-          return fileName === file.name.toLowerCase() || fileName === file.name.replace(/\.[^.]+$/, '').toLowerCase();
-        }) || creditList[index] || {};
-        return { singer: String(credit.singer || credit.artist || '').trim(), composer: String(credit.composer || '').trim() };
-      });
-      return {
-        title: String(info.title || folderName).trim(),
-        description: String(info.description || '').trim(),
-        artist: String(info.artist || 'Sargam.play').trim(),
-        coverFile,
-        audioFiles: sortedAudioFiles,
-        trackCredits
-      };
-    });
   }
 
   function renderAdminTrackCredits(files) {
@@ -1888,6 +1885,47 @@
       row.append(title, fields);
       list.appendChild(row);
     });
+  }
+
+  function renderRequestTrackCredits(files) {
+    const section = $('requestTrackCredits');
+    const list = $('requestTrackCreditsList');
+    if (!section || !list) return;
+    list.replaceChildren();
+    section.hidden = !files.length;
+
+    files.forEach((file, index) => {
+      const row = document.createElement('div');
+      row.className = 'request-track-credit-row';
+      const title = document.createElement('strong');
+      title.textContent = file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+      const fields = document.createElement('div');
+      fields.className = 'admin-track-credit-fields';
+      [['Singer', 'singer'], ['Composer', 'composer']].forEach(([labelText, key]) => {
+        const label = document.createElement('label');
+        label.className = 'admin-field';
+        const caption = document.createElement('span');
+        caption.textContent = labelText;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.required = true;
+        input.placeholder = `${labelText} name`;
+        input.dataset.requestTrackCredit = key;
+        input.dataset.trackIndex = String(index);
+        label.append(caption, input);
+        fields.appendChild(label);
+      });
+      row.append(title, fields);
+      list.appendChild(row);
+    });
+  }
+
+  function collectRequestTrackCredits() {
+    return [...($('requestTrackCreditsList')?.querySelectorAll('.request-track-credit-row') || [])]
+      .map((row) => ({
+        singer: row.querySelector('[data-request-track-credit="singer"]')?.value.trim() || '',
+        composer: row.querySelector('[data-request-track-credit="composer"]')?.value.trim() || ''
+      }));
   }
 
   function collectAdminTrackCredits() {
@@ -2429,18 +2467,30 @@
       event.preventDefault();
       const submit = $('submitMusicRequest');
       submit.disabled = true;
-      setFormMessage('requestFormMessage', 'Preparing your folder for review…');
+      setFormMessage('requestFormMessage', 'Uploading your folder and songs…');
       try {
-        const requestData = await readFolderRequest($('requestFolderFiles')?.files);
+        const audioFiles = [...($('requestAlbumTracks')?.files || [])];
+        const requestData = {
+          title: $('requestAlbumTitle').value.trim(),
+          artist: $('requestAlbumArtist').value.trim(),
+          description: $('requestAlbumDescription').value.trim(),
+          coverFile: $('requestAlbumCover')?.files?.[0] || null,
+          audioFiles,
+          trackCredits: collectRequestTrackCredits()
+        };
         await window.sargamBackend.submitAlbumRequest(requestData);
         $('musicRequestForm').reset();
-        setFormMessage('requestFormMessage', 'Your folder was sent. It will appear after an admin approves it.', 'success');
+        renderRequestTrackCredits([]);
+        setFormMessage('requestFormMessage', 'Your folder was sent with its details and song credits. It will appear after an admin approves it.', 'success');
         await renderMyRequests();
       } catch (error) {
-        setFormMessage('requestFormMessage', error instanceof SyntaxError ? 'info.json is not valid JSON. Please correct it and try again.' : error.message, 'error');
+        setFormMessage('requestFormMessage', error.message, 'error');
       } finally {
         submit.disabled = false;
       }
+    });
+    $('requestAlbumTracks')?.addEventListener('change', (event) => {
+      renderRequestTrackCredits([...event.currentTarget.files || []]);
     });
     $('closeAdminPanel')?.addEventListener('click', () => {
       setAdminPanelVisible(false);

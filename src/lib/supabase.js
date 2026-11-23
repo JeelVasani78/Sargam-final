@@ -308,13 +308,22 @@ export const sargamBackend = {
     if (profile?.role !== 'admin') throw new Error('Administrator access is required.')
     let query = requireClient()
       .from('album_requests')
-      .select('id, title, description, artist, status, review_note, created_at, profiles!album_requests_requested_by_fkey(display_name, email), album_request_tracks(id, title, artist, singer, composer, file_name, position)')
+      .select('id, title, description, artist, cover_path, status, review_note, created_at, profiles!album_requests_requested_by_fkey(display_name, email), album_request_tracks(id, title, artist, singer, composer, file_name, position)')
       .order('created_at', { ascending: false })
     if (pendingOnly) query = query.eq('status', 'pending')
 
     const { data, error } = await query
     if (error) throw error
-    return data || []
+    return Promise.all((data || []).map(async (request) => {
+      if (!request.cover_path) return { ...request, cover_url: null }
+      const { data: signed, error: coverError } = await requireClient()
+        .storage.from('music-requests').createSignedUrl(request.cover_path, 3600)
+      if (coverError) {
+        console.warn('Could not preview a requested cover image:', coverError)
+        return { ...request, cover_url: null }
+      }
+      return { ...request, cover_url: signed?.signedUrl || null }
+    }))
   },
 
   async getMyAlbumRequests() {
@@ -331,14 +340,20 @@ export const sargamBackend = {
   async submitAlbumRequest({ title, description, artist, coverFile, audioFiles, trackCredits = [] }) {
     if (!session?.user) throw new Error('Log in before requesting a music folder.')
     if (!audioFiles?.length) throw new Error('Choose at least one audio track.')
+    if (!title?.trim()) throw new Error('Enter a folder name.')
+    if (trackCredits.length !== audioFiles.length || trackCredits.some((credit) => !credit.singer?.trim() || !credit.composer?.trim())) {
+      throw new Error('Enter both the singer and composer for every song.')
+    }
     const client = requireClient()
+    const folderTitle = title.trim()
+    const folderArtist = artist?.trim() || 'Sargam.play'
     const { data: request, error: requestError } = await client
       .from('album_requests')
       .insert({
         requested_by: session.user.id,
-        title,
-        description,
-        artist,
+        title: folderTitle,
+        description: description?.trim() || '',
+        artist: folderArtist,
         status: 'pending'
       })
       .select('id')
@@ -377,9 +392,9 @@ export const sargamBackend = {
         requestTracks.push({
           request_id: request.id,
           title: file.name.replace(/\.[^.]+$/, '').replace(/_/g, ' '),
-          artist,
-          singer: trackCredits[index]?.singer?.trim() || '',
-          composer: trackCredits[index]?.composer?.trim() || '',
+          artist: folderArtist,
+          singer: trackCredits[index].singer.trim(),
+          composer: trackCredits[index].composer.trim(),
           file_name: file.name,
           storage_path: storagePath,
           position: index

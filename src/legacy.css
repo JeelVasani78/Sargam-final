@@ -1642,6 +1642,79 @@ html[data-theme-mode="light"] .avatar-crop-viewport {
 .request-status-rejected { color: #ffaaaa; }
 .request-folder-help { color: #a4b0c0; font-size: 0.75rem; line-height: 1.45; }
 
+.request-modal-box {
+    width: min(94vw, 56rem);
+    max-width: 56rem;
+    max-height: min(92dvh, 58rem);
+    overflow-y: auto;
+}
+
+.request-album-form .admin-form-grid { margin-top: 0; }
+.request-track-credits[hidden] { display: none !important; }
+.request-track-credits { display: grid; gap: 0.75rem; }
+.request-track-credits-list { display: grid; gap: 0.7rem; }
+.request-track-credit-row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 0.8fr) minmax(0, 2fr);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.8rem;
+    border: 1px solid var(--theme-border, rgba(166, 188, 216, 0.14));
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--theme-card, #17212d) 86%, var(--theme-page, #080b10));
+}
+
+.request-track-credit-row > strong { color: var(--theme-text, #eef3fa); overflow-wrap: anywhere; }
+.request-album-form > .modal-submit-btn { justify-self: start; width: fit-content; }
+
+.admin-request-track-review {
+    margin-top: 0.55rem;
+    color: var(--theme-muted, #a6b2c2);
+    font-size: 0.76rem;
+}
+
+.admin-request-track-review summary {
+    width: fit-content;
+    color: var(--theme-accent, #75dca8);
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.admin-request-track-review ul {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0.55rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-request-track-review li {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.55rem 0.65rem;
+    border: 1px solid var(--theme-border, rgba(166, 188, 216, 0.14));
+    border-radius: 0.55rem;
+    background: color-mix(in srgb, var(--theme-card, #17212d) 85%, transparent);
+}
+
+.admin-request-track-review li strong { color: var(--theme-text, #eef3fa); }
+.admin-request-track-review li span { overflow-wrap: anywhere; }
+.admin-request-cover {
+    width: 4rem;
+    height: 4rem;
+    flex: 0 0 4rem;
+    border: 1px solid var(--theme-border);
+    border-radius: 0.6rem;
+    object-fit: cover;
+}
+
+@media (max-width: 640px) {
+    .request-track-credit-row { grid-template-columns: minmax(0, 1fr); }
+    .request-track-credit-row .admin-track-credit-fields { grid-template-columns: minmax(0, 1fr); }
+    .request-album-form > .modal-submit-btn { width: 100%; }
+    .admin-request-cover { width: 3.5rem; height: 3.5rem; flex-basis: 3.5rem; }
+}
+
 @media (max-width: 1050px) {
     .admin-metrics-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
